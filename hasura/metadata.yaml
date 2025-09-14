@@ -1,0 +1,594 @@
+# Hasura Metadata Configuration
+version: 3
+sources:
+  - name: default
+    kind: postgres
+    configuration:
+      connection_info:
+        database_url:
+          from_env: HASURA_GRAPHQL_DATABASE_URL
+        isolation_level: read-committed
+        pool_settings:
+          connection_lifetime: 600
+          idle_timeout: 180
+          max_connections: 50
+          retries: 1
+        use_prepared_statements: true
+    tables:
+      - table:
+          name: badges
+          schema: public
+        object_relationships:
+          - name: user_badges
+            using:
+              foreign_key_constraint_on:
+                column: badge_id
+                table:
+                  name: user_badges
+                  schema: public
+        select_permissions:
+          - role: user
+            permission:
+              columns:
+                - id
+                - name
+                - description
+                - icon_url
+                - badge_type
+                - points_reward
+                - is_active
+                - created_at
+              filter:
+                is_active:
+                  _eq: true
+          - role: admin
+            permission:
+              columns: "*"
+              filter: {}
+        insert_permissions:
+          - role: admin
+            permission:
+              columns:
+                - name
+                - description
+                - icon_url
+                - badge_type
+                - criteria
+                - points_reward
+                - is_active
+              check: {}
+        update_permissions:
+          - role: admin
+            permission:
+              columns:
+                - name
+                - description
+                - icon_url
+                - badge_type
+                - criteria
+                - points_reward
+                - is_active
+              filter: {}
+              check: {}
+
+      - table:
+          name: categories
+          schema: public
+        object_relationships:
+          - name: creator
+            using:
+              foreign_key_constraint_on: created_by
+        array_relationships:
+          - name: sub_categories
+            using:
+              foreign_key_constraint_on:
+                column: category_id
+                table:
+                  name: sub_categories
+                  schema: public
+          - name: prompts
+            using:
+              foreign_key_constraint_on:
+                column: category_id
+                table:
+                  name: prompts
+                  schema: public
+        select_permissions:
+          - role: user
+            permission:
+              columns:
+                - id
+                - name
+                - slug
+                - description
+                - icon_url
+                - color_hex
+                - sort_order
+                - created_at
+              filter:
+                is_active:
+                  _eq: true
+          - role: admin
+            permission:
+              columns: "*"
+              filter: {}
+        insert_permissions:
+          - role: admin
+            permission:
+              columns:
+                - name
+                - slug
+                - description
+                - icon_url
+                - color_hex
+                - is_active
+                - sort_order
+              check: {}
+        update_permissions:
+          - role: admin
+            permission:
+              columns:
+                - name
+                - slug
+                - description
+                - icon_url
+                - color_hex
+                - is_active
+                - sort_order
+              filter: {}
+              check: {}
+
+      - table:
+          name: prompts
+          schema: public
+        object_relationships:
+          - name: user
+            using:
+              foreign_key_constraint_on: user_id
+          - name: category
+            using:
+              foreign_key_constraint_on: category_id
+          - name: sub_category
+            using:
+              foreign_key_constraint_on: sub_category_id
+        array_relationships:
+          - name: scores
+            using:
+              foreign_key_constraint_on:
+                column: prompt_id
+                table:
+                  name: prompt_scores
+                  schema: public
+          - name: favorites
+            using:
+              foreign_key_constraint_on:
+                column: prompt_id
+                table:
+                  name: user_favorites
+                  schema: public
+          - name: analytics
+            using:
+              foreign_key_constraint_on:
+                column: prompt_id
+                table:
+                  name: usage_analytics
+                  schema: public
+        computed_fields:
+          - name: avg_rating
+            definition:
+              function:
+                name: prompt_avg_rating
+                schema: public
+          - name: rating_count
+            definition:
+              function:
+                name: prompt_rating_count
+                schema: public
+        select_permissions:
+          - role: user
+            permission:
+              columns:
+                - id
+                - user_id
+                - category_id
+                - sub_category_id
+                - title
+                - content
+                - tags
+                - is_featured
+                - score
+                - usage_count
+                - last_used_at
+                - created_at
+                - updated_at
+              filter:
+                _or:
+                  - is_public:
+                      _eq: true
+                    status:
+                      _eq: active
+                  - user_id:
+                      _eq: X-Hasura-User-Id
+              allow_aggregations: true
+          - role: admin
+            permission:
+              columns: "*"
+              filter: {}
+              allow_aggregations: true
+        insert_permissions:
+          - role: user
+            permission:
+              columns:
+                - category_id
+                - sub_category_id
+                - title
+                - content
+                - tags
+                - is_public
+              check:
+                user_id:
+                  _eq: X-Hasura-User-Id
+        update_permissions:
+          - role: user
+            permission:
+              columns:
+                - category_id
+                - sub_category_id
+                - title
+                - content
+                - tags
+                - is_public
+              filter:
+                user_id:
+                  _eq: X-Hasura-User-Id
+              check:
+                user_id:
+                  _eq: X-Hasura-User-Id
+          - role: admin
+            permission:
+              columns: "*"
+              filter: {}
+              check: {}
+
+      - table:
+          name: prompt_scores
+          schema: public
+        object_relationships:
+          - name: prompt
+            using:
+              foreign_key_constraint_on: prompt_id
+          - name: user
+            using:
+              foreign_key_constraint_on: user_id
+        select_permissions:
+          - role: user
+            permission:
+              columns:
+                - id
+                - prompt_id
+                - user_id
+                - score
+                - created_at
+              filter: {}
+              allow_aggregations: true
+        insert_permissions:
+          - role: user
+            permission:
+              columns:
+                - prompt_id
+                - score
+              check:
+                user_id:
+                  _eq: X-Hasura-User-Id
+        update_permissions:
+          - role: user
+            permission:
+              columns:
+                - score
+              filter:
+                user_id:
+                  _eq: X-Hasura-User-Id
+              check:
+                user_id:
+                  _eq: X-Hasura-User-Id
+
+      - table:
+          name: users
+          schema: public
+        array_relationships:
+          - name: prompts
+            using:
+              foreign_key_constraint_on:
+                column: user_id
+                table:
+                  name: prompts
+                  schema: public
+          - name: scores_given
+            using:
+              foreign_key_constraint_on:
+                column: user_id
+                table:
+                  name: prompt_scores
+                  schema: public
+          - name: badges
+            using:
+              foreign_key_constraint_on:
+                column: user_id
+                table:
+                  name: user_badges
+                  schema: public
+          - name: favorites
+            using:
+              foreign_key_constraint_on:
+                column: user_id
+                table:
+                  name: user_favorites
+                  schema: public
+        select_permissions:
+          - role: user
+            permission:
+              columns:
+                - id
+                - username
+                - full_name
+                - avatar_url
+                - total_score
+                - created_at
+                - last_login_at
+              filter:
+                is_active:
+                  _eq: true
+              allow_aggregations: true
+          - role: admin
+            permission:
+              columns: "*"
+              filter: {}
+              allow_aggregations: true
+        update_permissions:
+          - role: user
+            permission:
+              columns:
+                - full_name
+                - avatar_url
+                - preferences
+              filter:
+                id:
+                  _eq: X-Hasura-User-Id
+              check:
+                id:
+                  _eq: X-Hasura-User-Id
+
+      - table:
+          name: user_badges
+          schema: public
+        object_relationships:
+          - name: user
+            using:
+              foreign_key_constraint_on: user_id
+          - name: badge
+            using:
+              foreign_key_constraint_on: badge_id
+        select_permissions:
+          - role: user
+            permission:
+              columns:
+                - id
+                - user_id
+                - badge_id
+                - earned_at
+                - progress
+              filter: {}
+              allow_aggregations: true
+
+      - table:
+          name: usage_analytics
+          schema: public
+        object_relationships:
+          - name: user
+            using:
+              foreign_key_constraint_on: user_id
+          - name: prompt
+            using:
+              foreign_key_constraint_on: prompt_id
+        select_permissions:
+          - role: user
+            permission:
+              columns:
+                - id
+                - user_id
+                - prompt_id
+                - action
+                - metadata
+                - created_at
+              filter:
+                _or:
+                  - user_id:
+                      _eq: X-Hasura-User-Id
+                  - user_id:
+                      _is_null: true
+              allow_aggregations: true
+          - role: admin
+            permission:
+              columns: "*"
+              filter: {}
+              allow_aggregations: true
+        insert_permissions:
+          - role: user
+            permission:
+              columns:
+                - prompt_id
+                - action
+                - metadata
+              check:
+                _or:
+                  - user_id:
+                      _eq: X-Hasura-User-Id
+                  - user_id:
+                      _is_null: true
+
+# Custom functions for computed fields
+functions:
+  - function:
+      name: prompt_avg_rating
+      schema: public
+  - function:
+      name: prompt_rating_count
+      schema: public
+  - function:
+      name: user_prompt_count
+      schema: public
+
+# Actions for custom business logic
+actions:
+  - name: submitPrompt
+    definition:
+      kind: synchronous
+      handler: "{{ACTION_BASE_URL}}/submit-prompt"
+      forward_client_headers: true
+      headers:
+        - name: Authorization
+          value_from_env: ACTION_SECRET_KEY
+    permissions:
+      - role: user
+    comment: Submit a new prompt with validation and scoring
+
+  - name: trackUsage
+    definition:
+      kind: synchronous
+      handler: "{{ACTION_BASE_URL}}/track-usage"
+      forward_client_headers: true
+    permissions:
+      - role: user
+    comment: Track prompt usage for analytics
+
+  - name: checkBadgeEligibility
+    definition:
+      kind: synchronous
+      handler: "{{ACTION_BASE_URL}}/check-badges"
+      forward_client_headers: true
+    permissions:
+      - role: user
+    comment: Check and award eligible badges
+
+# Remote schemas for external services
+remote_schemas: []
+
+# Event triggers for real-time processing
+event_triggers:
+  - name: new_prompt_submitted
+    definition:
+      enable_manual: false
+      insert:
+        columns: "*"
+      table:
+        name: prompts
+        schema: public
+    retry_conf:
+      interval_sec: 10
+      num_retries: 3
+      timeout_sec: 60
+    webhook: "{{EVENT_WEBHOOK_URL}}/new-prompt"
+    headers:
+      - name: Authorization
+        value_from_env: EVENT_SECRET_KEY
+
+  - name: prompt_scored
+    definition:
+      enable_manual: false
+      insert:
+        columns: "*"
+      update:
+        columns:
+          - score
+      table:
+        name: prompt_scores
+        schema: public
+    retry_conf:
+      interval_sec: 10
+      num_retries: 3
+      timeout_sec: 60
+    webhook: "{{EVENT_WEBHOOK_URL}}/prompt-scored"
+
+  - name: badge_earned
+    definition:
+      enable_manual: false
+      insert:
+        columns: "*"
+      table:
+        name: user_badges
+        schema: public
+    retry_conf:
+      interval_sec: 10
+      num_retries: 3
+      timeout_sec: 60
+    webhook: "{{EVENT_WEBHOOK_URL}}/badge-earned"
+
+# Cron triggers for scheduled tasks
+cron_triggers:
+  - name: update_leaderboards
+    webhook: "{{CRON_WEBHOOK_URL}}/update-leaderboards"
+    schedule: "0 */6 * * *"  # Every 6 hours
+    headers:
+      - name: Authorization
+        value_from_env: CRON_SECRET_KEY
+    comment: Update leaderboard rankings
+
+  - name: calculate_daily_stats
+    webhook: "{{CRON_WEBHOOK_URL}}/daily-stats"
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    headers:
+      - name: Authorization
+        value_from_env: CRON_SECRET_KEY
+    comment: Calculate daily usage statistics
+
+  - name: check_badge_eligibility
+    webhook: "{{CRON_WEBHOOK_URL}}/check-badges"
+    schedule: "0 */4 * * *"  # Every 4 hours
+    headers:
+      - name: Authorization
+        value_from_env: CRON_SECRET_KEY
+    comment: Check and award eligible badges
+
+# API limits and security
+api_limits:
+  rate_limit:
+    global:
+      unique_params: IP
+      max_reqs_per_min: 120
+    per_role:
+      user:
+        unique_params: ["user_id", "IP"]
+        max_reqs_per_min: 60
+      admin:
+        unique_params: ["user_id"]
+        max_reqs_per_min: 300
+  depth_limit:
+    global: 15
+    per_role:
+      user: 10
+      admin: 20
+  node_limit:
+    global: 1000
+    per_role:
+      user: 500
+      admin: 2000
+
+# Query collections for allow-listing
+query_collections: []
+
+# Allow list (empty means all queries allowed)
+allowlist: []
+
+# Custom types
+custom_types:
+  input_objects: []
+  objects: []
+  scalars: []
+  enums: []
+
+# Network configuration
+network:
+  tls_allowlist: []
+
+# Backend only permissions
+backend_only: false
